@@ -1,53 +1,52 @@
 """Wallbox button entities."""
 
+from __future__ import annotations
+
 import logging
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, ATTR_SERIAL_NUMBER
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, ATTR_RESTART_WALLBOX
+from .const import ATTR_RESTART_WALLBOX
+from .coordinator import LrtWallboxCoordinator
 from .entity import WallboxBaseEntity
-from .helpers import WallboxClientExecutor
+from .models import LrtConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(
-        hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    config_entry: LrtConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Wallbox button entity."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    executor: WallboxClientExecutor = data["executor"]
-
-    async_add_entities([RestartWallboxButton(executor)])
+    coordinator = config_entry.runtime_data.coordinator
+    async_add_entities([RestartWallboxButton(coordinator)])
 
 
 class RestartWallboxButton(WallboxBaseEntity, ButtonEntity):
     """Button to restart the Wallbox."""
 
-    _attr_has_entity_name = True
     _attr_translation_key = ATTR_RESTART_WALLBOX
     _attr_icon = "mdi:restart-alert"
     _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, executor: WallboxClientExecutor):
+    def __init__(self, coordinator: LrtWallboxCoordinator) -> None:
         """Initialize the button."""
-        super().__init__(executor)
-        self._attr_unique_id = f"{executor.config_entry.entry_id}_{ATTR_RESTART_WALLBOX}"
+        super().__init__(coordinator, ATTR_RESTART_WALLBOX)
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        try:
-            await self.executor.call("util_restart", priority=1)
-        except Exception as e:  # noqa: BLE001
-            _LOGGER.warning("Failed to restart wallbox: %s", e)
+        # util_restart frequently drops the connection as the device reboots;
+        # the executor already treats that timeout as success.
+        await self.executor.call("util_restart", priority=1)
 
     @property
     def available(self) -> bool:
         """Return True if the button is available."""
-        return (
-                self.executor.last_update_success and ATTR_SERIAL_NUMBER in self.executor.data
-        )
+        return self.coordinator.last_update_success

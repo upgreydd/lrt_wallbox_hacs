@@ -13,7 +13,32 @@
           "refresh_interval": "Refresh interval (s)",
           "ocpp_wss_url": "OCPP WebSocket URL"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Wallbox",
+        "description": "The stored password was rejected. Enter the current password for the Wallbox.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Wallbox",
+        "description": "Update the connection details for the Wallbox charging station.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "username": "Username",
+          "password": "Password"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Failed to connect to the Wallbox."
+    },
+    "abort": {
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful."
     }
   },
   "options": {
@@ -27,12 +52,8 @@
       },
       "general": {
         "title": "Wallbox Settings",
-        "description": "Edit connection details and current limit.",
+        "description": "Edit the current limit, refresh interval and OCPP URL.",
         "data": {
-          "name": "Name",
-          "host": "Host",
-          "username": "Username",
-          "password": "Password",
           "max_load": "Maximum current (A)",
           "refresh_interval": "Refresh interval (s)",
           "ocpp_wss_url": "OCPP WebSocket URL"
@@ -89,16 +110,16 @@
       "charger_status": {
         "name": "Wallbox status",
         "state": {
-          "Available": "Available",
-          "Occupied": "Occupied",
-          "Reserved": "Reserved",
-          "Unavailable": "Unavailable",
-          "Faulted": "Faulted",
-          "Preparing": "Preparing",
-          "Charging": "Charging",
-          "SuspendedEvse": "Suspended (EVSE)",
-          "SuspendedEv": "Suspended (EV)",
-          "Finishing": "Finishing"
+          "available": "Available",
+          "occupied": "Occupied",
+          "reserved": "Reserved",
+          "unavailable": "Unavailable",
+          "faulted": "Faulted",
+          "preparing": "Preparing",
+          "charging": "Charging",
+          "suspendedevse": "Suspended (EVSE)",
+          "suspendedev": "Suspended (EV)",
+          "finishing": "Finishing"
         }
       },
       "charger_current_rate": {

@@ -2,31 +2,30 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DOMAIN,
-    ATTR_SETUP_STATUS_AMBIENT_LIGHT,
     ATTR_ATMEL_ERROR,
+    ATTR_CHARGING_IS_ON,
     ATTR_NETWORK_STATUS_ETHERNET,
     ATTR_NETWORK_STATUS_WLAN,
+    ATTR_SETUP_STATUS_AMBIENT_LIGHT,
+    ATTR_SETUP_STATUS_MAX_CHARGING_POWER,
     ATTR_SETUP_STATUS_NETWORK,
-    ATTR_SETUP_STATUS_MAX_CHARGING_POWER, ATTR_CHARGING_IS_ON,
 )
+from .coordinator import LrtWallboxCoordinator
 from .entity import WallboxBaseEntity
-from .helpers import WallboxClientExecutor
+from .models import LrtConfigEntry
 
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 0
 
 SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = {
     ATTR_NETWORK_STATUS_WLAN: {
@@ -63,46 +62,37 @@ SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = {
         "translation_key": ATTR_CHARGING_IS_ON,
         "icon": "mdi:ev-station",
         "device_class": BinarySensorDeviceClass.BATTERY_CHARGING,
-    }
+    },
 }
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant,
+    config_entry: LrtConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up binary sensors."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    executor: WallboxClientExecutor = data["executor"]
-
+    coordinator = config_entry.runtime_data.coordinator
     async_add_entities(
-        [StatusBinarySensor(executor, key) for key in SENSOR_DEFINITIONS]
+        StatusBinarySensor(coordinator, key) for key in SENSOR_DEFINITIONS
     )
 
 
 class StatusBinarySensor(WallboxBaseEntity, BinarySensorEntity):
     """Sensor for Wallbox network/setup/error status."""
 
-    _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, executor: WallboxClientExecutor, key: str) -> None:
+    def __init__(self, coordinator: LrtWallboxCoordinator, key: str) -> None:
         """Initialize the binary sensor."""
-        super().__init__(executor)
+        super().__init__(coordinator, key)
         definition = SENSOR_DEFINITIONS[key]
-        self._key = key
         self._attr_icon = definition.get("icon")
         self._attr_translation_key = definition["translation_key"]
-        self._attr_unique_id = f"{executor.config_entry.entry_id}_{key}"
         self._attr_device_class = definition["device_class"]
 
     @property
     def is_on(self) -> bool | None:
         """Return the binary state."""
-        return self.executor.data.get(self._key)
-
-    @property
-    def available(self) -> bool:
-        """Return True if the value is present in data."""
-        return self.executor.last_update_success and self._key in self.executor.data
+        data = self.coordinator.data or {}
+        return data.get(self._key)

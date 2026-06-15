@@ -13,7 +13,32 @@
           "refresh_interval": "Interwał odświeżania (s)",
           "ocpp_wss_url": "Adres URL OCPP WebSocket"
         }
+      },
+      "reauth_confirm": {
+        "title": "Ponowne uwierzytelnienie Wallbox",
+        "description": "Zapisane hasło zostało odrzucone. Wprowadź aktualne hasło do Wallboxa.",
+        "data": {
+          "password": "Hasło"
+        }
+      },
+      "reconfigure": {
+        "title": "Rekonfiguracja Wallbox",
+        "description": "Zaktualizuj szczegóły połączenia ze stacją ładowania Wallbox.",
+        "data": {
+          "name": "Nazwa",
+          "host": "Host",
+          "username": "Użytkownik",
+          "password": "Hasło"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy użytkownik lub hasło.",
+      "cannot_connect": "Nie udało się połączyć z Wallboxem."
+    },
+    "abort": {
+      "reauth_successful": "Ponowne uwierzytelnienie powiodło się.",
+      "reconfigure_successful": "Rekonfiguracja powiodła się."
     }
   },
   "options": {
@@ -27,12 +52,8 @@
       },
       "general": {
         "title": "Ustawienia Wallbox",
-        "description": "Edytuj szczegóły połączenia i ograniczenie prądu.",
+        "description": "Edytuj limit prądu, interwał odświeżania i adres URL OCPP.",
         "data": {
-          "name": "Nazwa",
-          "host": "Host",
-          "username": "Użytkownik",
-          "password": "Hasło",
           "max_load": "Maksymalny prąd (A)",
           "refresh_interval": "Interwał odświeżania (s)",
           "ocpp_wss_url": "Adres URL OCPP WebSocket"
@@ -89,16 +110,16 @@
       "charger_status": {
         "name": "Status Wallboxa",
         "state": {
-          "Available": "Dostępny",
-          "Occupied": "Zajęty",
-          "Reserved": "Zarezerwowany",
-          "Unavailable": "Niedostępny",
-          "Faulted": "Uszkodzony",
-          "Preparing": "Przygotowanie",
-          "Charging": "Ładowanie",
-          "SuspendedEvse": "Wstrzymany (EVSE)",
-          "SuspendedEv": "Wstrzymany (EV)",
-          "Finishing": "Zakończenie"
+          "available": "Dostępny",
+          "occupied": "Zajęty",
+          "reserved": "Zarezerwowany",
+          "unavailable": "Niedostępny",
+          "faulted": "Uszkodzony",
+          "preparing": "Przygotowanie",
+          "charging": "Ładowanie",
+          "suspendedevse": "Wstrzymany (EVSE)",
+          "suspendedev": "Wstrzymany (EV)",
+          "finishing": "Zakończenie"
         }
       },
       "charger_current_rate": {

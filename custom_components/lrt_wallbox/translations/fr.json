@@ -13,7 +13,32 @@
           "refresh_interval": "Intervalle de rafraîchissement (s)",
           "ocpp_wss_url": "URL OCPP WebSocket"
         }
+      },
+      "reauth_confirm": {
+        "title": "Ré-authentifier la Wallbox",
+        "description": "Le mot de passe enregistré a été refusé. Saisissez le mot de passe actuel de la Wallbox.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer la Wallbox",
+        "description": "Mettez à jour les détails de connexion de la borne de recharge Wallbox.",
+        "data": {
+          "name": "Nom",
+          "host": "Hôte",
+          "username": "Nom d’utilisateur",
+          "password": "Mot de passe"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Nom d’utilisateur ou mot de passe invalide.",
+      "cannot_connect": "Échec de la connexion à la Wallbox."
+    },
+    "abort": {
+      "reauth_successful": "La ré-authentification a réussi.",
+      "reconfigure_successful": "La reconfiguration a réussi."
     }
   },
   "options": {
@@ -27,12 +52,8 @@
       },
       "general": {
         "title": "Paramètres de la Wallbox",
-        "description": "Modifiez les détails de connexion et la limite de courant.",
+        "description": "Modifiez la limite de courant, l’intervalle de rafraîchissement et l’URL OCPP.",
         "data": {
-          "name": "Nom",
-          "host": "Hôte",
-          "username": "Nom d’utilisateur",
-          "password": "Mot de passe",
           "max_load": "Courant maximal (A)",
           "refresh_interval": "Intervalle de rafraîchissement (s)",
           "ocpp_wss_url": "URL OCPP WebSocket"
@@ -89,16 +110,16 @@
       "charger_status": {
         "name": "Statut de la Wallbox",
         "state": {
-          "Available": "Disponible",
-          "Occupied": "Occupé",
-          "Reserved": "Réservé",
-          "Unavailable": "Indisponible",
-          "Faulted": "Défectueux",
-          "Preparing": "Préparation",
-          "Charging": "En charge",
-          "SuspendedEvse": "Suspendu (EVSE)",
-          "SuspendedEv": "Suspendu (EV)",
-          "Finishing": "Finalisation"
+          "available": "Disponible",
+          "occupied": "Occupé",
+          "reserved": "Réservé",
+          "unavailable": "Indisponible",
+          "faulted": "Défectueux",
+          "preparing": "Préparation",
+          "charging": "En charge",
+          "suspendedevse": "Suspendu (EVSE)",
+          "suspendedev": "Suspendu (EV)",
+          "finishing": "Finalisation"
         }
       },
       "charger_current_rate": {
