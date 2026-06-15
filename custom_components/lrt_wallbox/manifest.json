@@ -11,8 +11,7 @@
   "issue_tracker": "https://github.com/Upgreydd/lrt_wallbox_hacs/issues",
   "quality_scale": "bronze",
   "requirements": [
-    "lrt_wallbox==0.1.7",
-    "aioflo==2021.11.0"
+    "lrt_wallbox==0.1.8"
   ],
-  "version": "0.1.3"
+  "version": "0.1.4"
 }
