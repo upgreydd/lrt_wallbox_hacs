@@ -7,11 +7,14 @@
   "config_flow": true,
   "documentation": "https://github.com/Upgreydd/lrt_wallbox_hacs",
   "integration_type": "device",
-  "iot_class": "cloud_polling",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Upgreydd/lrt_wallbox_hacs/issues",
+  "loggers": [
+    "lrt_wallbox"
+  ],
   "quality_scale": "bronze",
   "requirements": [
-    "lrt_wallbox==0.1.8"
+    "lrt_wallbox==0.2.0"
   ],
-  "version": "0.1.4"
+  "version": "0.2.0"
 }

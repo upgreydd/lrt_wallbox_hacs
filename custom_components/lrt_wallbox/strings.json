@@ -1,29 +1,75 @@
 {
   "config": {
     "step": {
-      "init": {
-        "title": "LRT Wallbox Configuration",
-        "description": "Configure your LRT Wallbox charger.",
+      "user": {
+        "title": "Configure Wallbox",
+        "description": "Set up the connection to the Wallbox charging station.",
         "data": {
-          "choice": "Action"
+          "name": "Name",
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "max_load": "Maximum current (A)",
+          "refresh_interval": "Refresh interval (s)",
+          "ocpp_wss_url": "OCPP WebSocket URL"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Wallbox",
+        "description": "The stored password was rejected. Enter the current password for the Wallbox.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Wallbox",
+        "description": "Update the connection details for the Wallbox charging station.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "username": "Username",
+          "password": "Password"
         }
       }
     },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Failed to connect to the Wallbox."
+    },
     "abort": {
-      "rfid_scan_failed": "RFID scan failed: {error}",
-      "rfid_add_failed": "Adding RFID failed: {error}",
-      "rfid_delete_failed": "Deleting RFID failed: {error}",
-      "rfid_not_found": "RFID tag ID not found",
-      "rfid_empty": "No saved RFID tags"
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Reconfiguration was successful."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "LRT Wallbox Options",
+        "title": "Wallbox Options",
         "description": "Choose an action to perform.",
         "data": {
           "choice": "Action"
+        }
+      },
+      "general": {
+        "title": "Wallbox Settings",
+        "description": "Edit the current limit, refresh interval and OCPP URL.",
+        "data": {
+          "max_load": "Maximum current (A)",
+          "refresh_interval": "Refresh interval (s)",
+          "ocpp_wss_url": "OCPP WebSocket URL"
+        }
+      },
+      "enter_name": {
+        "title": "RFID Tag Name",
+        "data": {
+          "name": "Name"
+        }
+      },
+      "rfid_delete": {
+        "title": "Delete RFID Tag",
+        "description": "Deleting an RFID tag will permanently remove it.",
+        "data": {
+          "tag_id": "Tag ID"
         }
       }
     },
@@ -32,7 +78,111 @@
       "rfid_add_failed": "Adding RFID failed: {error}",
       "rfid_delete_failed": "Deleting RFID failed: {error}",
       "rfid_not_found": "RFID tag ID not found",
-      "rfid_empty": "No saved RFID tags"
+      "rfid_empty": "No RFID tags found"
+    }
+  },
+  "entity": {
+    "button": {
+      "restart_wallbox": {
+        "name": "Restart Wallbox"
+      }
+    },
+    "number": {
+      "max_current": {
+        "name": "Current limit"
+      }
+    },
+    "switch": {
+      "charging": {
+        "name": "Charging"
+      }
+    },
+    "sensor": {
+      "esp_fw": {
+        "name": "ESP Firmware"
+      },
+      "atmel_fw": {
+        "name": "Atmel Firmware"
+      },
+      "serial_number": {
+        "name": "Serial number"
+      },
+      "charger_status": {
+        "name": "Wallbox status",
+        "state": {
+          "available": "Available",
+          "occupied": "Occupied",
+          "reserved": "Reserved",
+          "unavailable": "Unavailable",
+          "faulted": "Faulted",
+          "preparing": "Preparing",
+          "charging": "Charging",
+          "suspendedevse": "Suspended (EVSE)",
+          "suspendedev": "Suspended (EV)",
+          "finishing": "Finishing"
+        }
+      },
+      "charger_current_rate": {
+        "name": "Current charging power"
+      },
+      "charger_seconds_since_start": {
+        "name": "Current session duration"
+      },
+      "transaction_current_energy": {
+        "name": "Current session energy"
+      },
+      "last_5_transactions": {
+        "name": "Last session",
+        "state_attributes": {
+          "start_time": {
+            "name": "Start time of last session"
+          },
+          "end_time": {
+            "name": "End time of last session"
+          },
+          "energy": {
+            "name": "Energy of last session"
+          },
+          "history": {
+            "name": "History of last 5 sessions"
+          }
+        }
+      }
+    },
+    "binary_sensor": {
+      "network_status_wlan": {
+        "name": "Network status (Wi-Fi)"
+      },
+      "network_status_ethernet": {
+        "name": "Network status (Ethernet)"
+      },
+      "setup_status_network": {
+        "name": "Setup status (Network)",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      },
+      "setup_status_ambient_light": {
+        "name": "Setup status (Lighting)",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      },
+      "setup_status_max_charging_power": {
+        "name": "Setup status (Charging power)",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      },
+      "atmel_error": {
+        "name": "Atmel status"
+      },
+      "charging_is_on": {
+        "name": "Charging status"
+      }
     }
   },
   "selector": {

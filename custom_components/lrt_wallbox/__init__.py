@@ -1,157 +1,90 @@
 """Integration for LRT Wallbox chargers."""
 
+from __future__ import annotations
+
 import logging
-from datetime import timedelta
-from functools import partial
 
-import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_HOST, CONF_NAME, ATTR_SERIAL_NUMBER
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from lrt_wallbox import WallboxClient
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from lrt_wallbox import WallboxAuthError, WallboxClient, WallboxPermissionError
 
-from .config_flow import LrtWallboxOptionsFlow  # noqa: F401
-from .const import DOMAIN, PLATFORMS, CONF_MAX_LOAD, ATTR_MAX_CURRENT, ATTR_ESP_FW, ATTR_ATMEL_FW, \
-    ATTR_SETUP_STATUS_NETWORK, ATTR_SETUP_STATUS_AMBIENT_LIGHT, ATTR_SETUP_STATUS_MAX_CHARGING_POWER, \
-    CONF_REFRESH_INTERVAL, CONF_OCPP_WSS_URL
-from .helpers import WallboxClientExecutor, update_status
+from .const import CONF_OCPP_WSS_URL, CONF_REFRESH_INTERVAL, DOMAIN, PLATFORMS
+from .coordinator import LrtWallboxCoordinator
+from .helpers import WallboxClientExecutor
+from .models import LrtConfigEntry, LrtRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_NAME, default="LRT Wallbox"): vol.All(
-                    cv.string, vol.Length(min=3, max=20)
-                ),
-                vol.Required(CONF_HOST): vol.All(
-                    cv.string, vol.Length(min=7, max=15)
-                ),
-                vol.Required(CONF_USERNAME): vol.All(
-                    cv.string, vol.Length(min=3, max=20)
-                ),
-                vol.Required(CONF_PASSWORD): vol.All(
-                    cv.string, vol.Length(min=3, max=20)
-                ),
-                vol.Required(CONF_MAX_LOAD, default=16): vol.All(
-                    cv.positive_int, vol.Range(min=6, max=32)
-                ),
-                vol.Required(CONF_REFRESH_INTERVAL, default=5): vol.All(
-                    cv.positive_int, vol.Range(min=3, max=300)
-                ),
-                vol.Optional(CONF_OCPP_WSS_URL, default=""): vol.All(
-                    cv.string, vol.Length(min=0, max=50)
-                )
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+
+def get_conf(entry: LrtConfigEntry, key: str, default=None):
+    """Read a tunable, preferring `options` and falling back to `data`.
+
+    Existing entries created before options were used still carry their values
+    in `data`; new/updated entries store tunables in `options`.
+    """
+    return entry.options.get(key, entry.data.get(key, default))
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: LrtConfigEntry) -> bool:
     """Set up LRT Wallbox from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
-    data = config_entry.data
-
     client = WallboxClient(
-        ip=data[CONF_HOST],
-        username=data[CONF_USERNAME],
-        password=data[CONF_PASSWORD],
+        ip=entry.data[CONF_HOST],
+        username=entry.data[CONF_USERNAME],
+        password=entry.data[CONF_PASSWORD],
+        # Keep the device keypair in HA's config dir (per-entry), never in the
+        # installed site-packages directory.
+        key_path=hass.config.path(DOMAIN, entry.entry_id),
     )
-    executor = WallboxClientExecutor(client, hass, config_entry)
+    executor = WallboxClientExecutor(client, hass)
 
-    await executor.call("config_ocpp_set", data[CONF_OCPP_WSS_URL])
-
-    # One time initialization to fetch initial data
-    serial = await executor.call("info_serial_get")
-    firmwares = await executor.call("info_firmwares_get")
-    setup_status = await executor.call("setup_get")
-    max_current = await executor.call("config_load_get")
-
-    executor.data.update(
-        {
-            ATTR_SERIAL_NUMBER: serial.serialNumber,
-            ATTR_ESP_FW: f"{firmwares.esp['major']}.{firmwares.esp['minor']}.{firmwares.esp['patch']}",
-            ATTR_ATMEL_FW: f"{firmwares.atmel['major']}.{firmwares.atmel['minor']}.{firmwares.atmel['revision']}.{firmwares.atmel['buildNumber']}",
-            ATTR_SETUP_STATUS_NETWORK: not bool(setup_status.network),
-            ATTR_SETUP_STATUS_AMBIENT_LIGHT: not bool(setup_status.ambientLight),
-            ATTR_SETUP_STATUS_MAX_CHARGING_POWER: not bool(setup_status.maxChargingPower),
-            ATTR_MAX_CURRENT: max_current.maxCurrent,
-        }
-    )
-
-    coordinator = DataUpdateCoordinator(
-        hass=hass,
-        logger=_LOGGER,
-        config_entry=config_entry,
-        name="LRT Wallbox Status",
-        update_interval=timedelta(seconds=data.get(CONF_REFRESH_INTERVAL, 5)),
-        update_method=partial(update_status, executor),
+    coordinator = LrtWallboxCoordinator(
+        hass,
+        entry,
+        executor,
+        update_interval=int(get_conf(entry, CONF_REFRESH_INTERVAL, 5)),
     )
 
     try:
+        await coordinator.async_init_static()
+        await _maybe_set_ocpp_url(coordinator, get_conf(entry, CONF_OCPP_WSS_URL, ""))
         await coordinator.async_config_entry_first_refresh()
+    except (ConfigEntryAuthFailed, ConfigEntryNotReady):
+        await executor.shutdown()
+        raise
+    except (WallboxAuthError, WallboxPermissionError) as err:
+        # Bad/expired credentials during the pre-refresh probe → start reauth.
+        await executor.shutdown()
+        raise ConfigEntryAuthFailed(str(err)) from err
     except Exception as err:
         await executor.shutdown()
         raise ConfigEntryNotReady(f"Wallbox not ready: {err}") from err
 
-    hass.data[DOMAIN][config_entry.entry_id] = {
-        "executor": executor,
-        "coordinator": coordinator,
-    }
+    entry.runtime_data = LrtRuntimeData(coordinator=coordinator)
 
-    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def _maybe_set_ocpp_url(coordinator: LrtWallboxCoordinator, url: str) -> None:
+    """Push the OCPP URL only when set and actually changed (idempotent)."""
+    if not url:
+        return
+    current = await coordinator.executor.call("config_ocpp_get")
+    if getattr(current, "url", None) != url:
+        _LOGGER.debug("Updating OCPP URL on device")
+        await coordinator.executor.call("config_ocpp_set", url)
+
+
+async def _async_reload_entry(hass: HomeAssistant, entry: LrtConfigEntry) -> None:
+    """Reload the entry when its options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: LrtConfigEntry) -> bool:
     """Unload a config entry."""
-    data = hass.data[DOMAIN].pop(config_entry.entry_id, None)
-
-    if data:
-        await data["executor"].shutdown()
-
-    return await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
-
-
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up integration via YAML (not supported)."""
-    if DOMAIN not in config:
-        return True
-
-    yaml_config = config[DOMAIN]
-
-    existing_entry = hass.config_entries.async_entries(DOMAIN)
-    if existing_entry:
-        entry = existing_entry[0]
-        hass.config_entries.async_update_entry(entry, data={
-            CONF_NAME: yaml_config[CONF_NAME],
-            CONF_HOST: yaml_config[CONF_HOST],
-            CONF_USERNAME: yaml_config[CONF_USERNAME],
-            CONF_PASSWORD: yaml_config[CONF_PASSWORD],
-            CONF_MAX_LOAD: yaml_config[CONF_MAX_LOAD],
-            CONF_REFRESH_INTERVAL: yaml_config[CONF_REFRESH_INTERVAL],
-            CONF_OCPP_WSS_URL: yaml_config[CONF_OCPP_WSS_URL],
-        })
-        await hass.config_entries.async_reload(entry.entry_id)
-        _LOGGER.info("Updated existing %s config entry from YAML", DOMAIN)
-        return True
-
-    await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_IMPORT}, data={
-            CONF_NAME: yaml_config[CONF_NAME],
-            CONF_HOST: yaml_config[CONF_HOST],
-            CONF_USERNAME: yaml_config[CONF_USERNAME],
-            CONF_PASSWORD: yaml_config[CONF_PASSWORD],
-            CONF_MAX_LOAD: yaml_config[CONF_MAX_LOAD],
-            CONF_REFRESH_INTERVAL: yaml_config[CONF_REFRESH_INTERVAL],
-            CONF_OCPP_WSS_URL: yaml_config[CONF_OCPP_WSS_URL],
-        })
-    _LOGGER.info("Imported %s configuration from YAML", DOMAIN)
-    return True
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded and entry.runtime_data is not None:
+        await entry.runtime_data.coordinator.executor.shutdown()
+    return unloaded
